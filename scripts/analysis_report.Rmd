@@ -1,0 +1,150 @@
+``` markdown
+---
+title: "Credit Card Transaction Analysis"
+author: "Hamza Shaikh"
+date: "2025-5-31"
+output: html_document
+---
+```
+
+# Credit Card Transaction Analysis
+
+## Load Libraries
+
+We start by loading the necessary libraries for our analysis.
+
+```{r load-libraries}
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(forecast)
+library(randomForest)
+library(tseries)
+library(reshape2)
+library(dplyr)
+```
+
+## Load Dataset
+
+Load the dataset into R.
+
+```{r load-dataset}
+df <- read.csv("A:/GithuB/Credit Card Spending Analysis/data/Credit card transactions.csv", stringsAsFactors = FALSE)
+head(df)
+```
+
+## Data Cleaning
+
+We handle missing values and parse timestamps.
+
+```{r data-cleaning}
+df$Date <- dmy(df$Date)
+df <- na.omit(df)
+```
+
+## Exploratory Data Analysis (EDA)
+
+Perform EDA to understand the data structure and summary.
+
+```{r eda}
+summary(df)
+str(df)
+```
+
+## Add Date Features
+
+Extract year, month, and weekday from the date.
+
+```{r add-date-features}
+df$Year <- year(df$Date)
+df$Month <- month(df$Date)
+df$Weekday <- weekdays(df$Date)
+```
+
+## Aggregations
+
+Compute total spend by city.
+
+```{r aggregations}
+total_spend_city <- df %>% group_by(City) %>% summarise(TotalSpend = sum(Amount)) %>% arrange(desc(TotalSpend))
+print(total_spend_city)
+```
+
+## Transaction Count by Card Type
+
+Count transactions by card type.
+
+```{r transaction-count-by-card-type}
+card_counts <- df %>% group_by(Card.Type) %>% summarise(Count = n())
+print(card_counts)
+```
+
+## Histogram of Amount
+
+Plot the distribution of transaction amounts.
+
+```{r histogram-of-amount}
+ggplot(df, aes(x=Amount)) +
+  geom_histogram(bins=50, fill='skyblue', color='black') +
+  ggtitle("Transaction Amount Distribution")
+```
+
+## Time Series Aggregation
+
+Aggregate data by month to analyze spending trends.
+
+```{r time-series-aggregation}
+monthly_spend <- df %>% group_by(YearMonth = floor_date(Date, "month")) %>%
+  summarise(MonthlyAmount = sum(Amount))
+
+print(monthly_spend)
+```
+
+## Plot Monthly Spend
+
+Visualize the monthly spending trend.
+
+```{r plot-monthly-spend}
+ggplot(monthly_spend, aes(x=YearMonth, y=MonthlyAmount)) +
+  geom_line(color='darkgreen') +
+  ggtitle("Monthly Spending Trend")
+```
+
+## Anomaly Detection using Z-score
+
+Detect anomalies in transaction amounts using Z-score.
+
+```{r anomaly-detection}
+df$z_score <- scale(df$Amount)
+df$Anomaly <- abs(df$z_score) > 3
+```
+
+## Plot Anomalies
+
+Visualize anomalies in transactions.
+
+```{r plot-anomalies}
+ggplot(df, aes(x=Date, y=Amount, color=Anomaly)) +
+  geom_point(alpha=0.7) +
+  ggtitle("Anomalies in Transactions")
+```
+
+## Time Series Forecasting
+
+Use ARIMA for time series forecasting.
+
+```{r time-series-forecasting}
+ts_data <- ts(monthly_spend$MonthlyAmount, start = c(2014,1), frequency = 12)
+model <- auto.arima(ts_data)
+forecasted <- forecast(model, h=6)
+```
+
+## Plot Forecast
+
+Visualize the forecasted monthly spend.
+
+```{r plot-forecast}
+autoplot(forecasted) + ggtitle("ARIMA Forecast for Monthly Spend")
+```
+
+\`\`\`
